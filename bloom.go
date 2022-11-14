@@ -4,10 +4,7 @@ import (
 	"math"
 
 	"github.com/fission-codes/go-bitset"
-	golog "github.com/ipfs/go-log"
 )
-
-var log = golog.Logger("car-mirror")
 
 type Filter struct {
 	bitCount  uint64         // filter size in bits
@@ -17,10 +14,14 @@ type Filter struct {
 
 // NewFilter returns a new Bloom filter with the specified number of bits and hash functions.
 // bitCount and hashCount will be set to 1 if a number less than 1 is provided, to avoid panic.
-func NewFilter(bitCount, hashCount uint64) *Filter {
+func NewFilter(bitCount, hashCount uint64) (*Filter, error) {
 	safeBitCount := max(1, bitCount)
 	safeHashCount := max(1, hashCount)
-	return &Filter{safeBitCount, safeHashCount, bitset.New(safeBitCount)}
+	b, err := bitset.New(safeBitCount)
+	if err != nil {
+		return nil, err
+	}
+	return &Filter{safeBitCount, safeHashCount, b}, nil
 }
 
 // NewFilterFromBloomBytes returns a new Bloom filter with the specified number of bits and hash functions,
@@ -37,13 +38,13 @@ func NewFilterFromBloomBytes(bitCount, hashCount uint64, bloomBytes []byte) *Fil
 // bitCount will be rounded to the next power of two, as recommended by the spec, to avoid resampling.
 func EstimateParameters(n uint64, fpp float64) (bitCount, hashCount uint64) {
 	bitCount = NextPowerOfTwo(uint64(math.Ceil(-1 * float64(n) * math.Log(fpp) / math.Pow(math.Log(2), 2))))
-	hashCount = uint64(math.Ceil(float64(bitCount) / float64(n) * math.Log(2)))
+	hashCount = uint64(math.Ceil((float64(bitCount) / float64(n)) * math.Log(2)))
 	return
 }
 
 // NewFilterWithEstimates returns a new Bloom filter with estimated parameters based on the specified
 // number of elements and false positive probability rate.
-func NewFilterWithEstimates(n uint64, fpp float64) *Filter {
+func NewFilterWithEstimates(n uint64, fpp float64) (*Filter, error) {
 	m, k := EstimateParameters(n, fpp)
 	return NewFilter(m, k)
 }
@@ -53,11 +54,8 @@ func NewFilterWithEstimates(n uint64, fpp float64) *Filter {
 // TODO: What should we do with 0?
 func EstimateFPP(n uint64) float64 {
 	if n == 0 {
-		log.Debugf("FPP is 0.0")
 		return 0.0
 	} else {
-		v := 1 / math.Pow10(int(math.Round(math.Log10(float64(n)))))
-		log.Debugf("FPP is %b", v)
 		return 1 / math.Pow10(int(math.Round(math.Log10(float64(n)))))
 	}
 }
@@ -104,6 +102,16 @@ func (f *Filter) Test(data []byte) bool {
 	}
 
 	return true
+}
+
+// Union sets this filter's bitset to the union of the other filter's bitset.
+func (f *Filter) Union(other *Filter) {
+	f.bitSet.Union(other.bitSet)
+}
+
+// Intersect sets this filter's bitset to the intersection of the other filter's bitset.
+func (f *Filter) Intersect(other *Filter) {
+	f.bitSet.Intersect(other.bitSet)
 }
 
 // FPP returns the false positive probability rate given the number of elements in the filter.
