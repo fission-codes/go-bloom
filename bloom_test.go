@@ -184,6 +184,30 @@ func TestUnion(t *testing.T) {
 	}
 }
 
+func TestCopy(t *testing.T) {
+	f1, _ := NewFilterWithEstimates(20, 0.01)
+	f1.Add([]byte{1})
+	if !f1.Test([]byte{1}) {
+		t.Errorf("should contain []byte{1}")
+	}
+	if f1.Test([]byte{2}) {
+		t.Errorf("should not contain []byte{2}")
+	}
+
+	f2 := f1.Copy()
+	f2.Add([]byte{2})
+	if !f2.Test([]byte{1}) {
+		t.Errorf("should contain []byte{1}")
+	}
+	if !f2.Test([]byte{2}) {
+		t.Errorf("should contain []byte{2}")
+	}
+
+	if f1.Test([]byte{2}) {
+		t.Errorf("should not contain []byte{2}")
+	}
+}
+
 func TestIntersect(t *testing.T) {
 	f1, _ := NewFilterWithEstimates(20, 0.01)
 	f1.Add([]byte{1})

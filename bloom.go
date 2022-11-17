@@ -33,6 +33,11 @@ func NewFilterFromBloomBytes(bitCount, hashCount uint64, bloomBytes []byte) *Fil
 	return &Filter{safeBitCount, safeHashCount, bitset.NewFromBytes(safeBitCount, bloomBytes)}
 }
 
+// Copy returns a pointer to a copy of the filter.
+func (f *Filter) Copy() *Filter {
+	return NewFilterFromBloomBytes(f.bitCount, f.hashCount, f.Bytes())
+}
+
 // EstimateParameters returns estimates for bitCount and hashCount.
 // Calculations are taken from the CAR Mirror spec.
 // bitCount will be rounded to the next power of two, as recommended by the spec, to avoid resampling.
