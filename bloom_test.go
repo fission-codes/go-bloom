@@ -6,11 +6,15 @@ import (
 	"encoding/binary"
 	"math"
 	"testing"
+
+	"github.com/zeebo/xxh3"
 	// "testing/quick"
 )
 
+var XXH3 HashFunction[[]byte] = xxh3.HashSeed
+
 func TestBasic(t *testing.T) {
-	f, _ := NewFilter(1000, 4)
+	f, _ := NewXXH3Filter(1000, 4)
 
 	// Rounded to nearest power of 2
 	if f.bitSet.BitsCount() != 1000 {
@@ -46,7 +50,7 @@ func TestBasic(t *testing.T) {
 }
 
 func TestBasicUint32(t *testing.T) {
-	f, _ := NewFilter(1000, 4)
+	f, _ := NewXXH3Filter(1000, 4)
 	n1 := make([]byte, 4)
 	n2 := make([]byte, 4)
 	n3 := make([]byte, 4)
@@ -88,7 +92,7 @@ func TestBasicUint32(t *testing.T) {
 }
 
 func TestNewWithLowNumbers(t *testing.T) {
-	f, _ := NewFilter(0, 0)
+	f, _ := NewXXH3Filter(0, 0)
 	if f.HashCount() != 1 {
 		t.Errorf("%v should be 1", f.HashCount())
 	}
@@ -96,7 +100,7 @@ func TestNewWithLowNumbers(t *testing.T) {
 		t.Errorf("%v should be 1", f.BitCount())
 	}
 
-	f2, _ := NewFilter(2, 0)
+	f2, _ := NewXXH3Filter(2, 0)
 	if f2.HashCount() != 1 {
 		t.Errorf("%v should be 1", f2.HashCount())
 	}
@@ -104,7 +108,7 @@ func TestNewWithLowNumbers(t *testing.T) {
 		t.Errorf("%v should be 1", f2.BitCount())
 	}
 
-	f3, _ := NewFilter(3, 0)
+	f3, _ := NewXXH3Filter(3, 0)
 	if f3.HashCount() != 1 {
 		t.Errorf("%v should be 1", f3.HashCount())
 	}
@@ -114,14 +118,14 @@ func TestNewWithLowNumbers(t *testing.T) {
 }
 
 func TestHashCount(t *testing.T) {
-	f, _ := NewFilter(1000, 4)
+	f, _ := NewXXH3Filter(1000, 4)
 	if f.HashCount() != f.hashCount {
 		t.Error("not accessing HashCount() correctly")
 	}
 }
 
 func TestBitCount(t *testing.T) {
-	f, _ := NewFilter(1000, 4)
+	f, _ := NewXXH3Filter(1000, 4)
 	if f.BitCount() != f.bitCount {
 		t.Error("not accessing BitCount() correctly")
 	}
@@ -132,7 +136,7 @@ func TestBytes(t *testing.T) {
 	u := uint64(1)
 	binary.BigEndian.PutUint64(b, u)
 
-	f, _ := NewFilter(8, 1)
+	f, _ := NewXXH3Filter(8, 1)
 	expected := []byte{byte(0)}
 	if !bytes.Equal(f.Bytes(), expected) {
 		t.Errorf("expected Bytes() to be %v, got %v", expected, f.Bytes())
@@ -140,7 +144,7 @@ func TestBytes(t *testing.T) {
 }
 
 func TestFPP(t *testing.T) {
-	f, _ := NewFilterWithEstimates(1000, 0.001)
+	f, _ := NewXXH3FilterWithEstimates(1000, 0.001)
 
 	for i := uint32(0); i < 1000; i++ {
 		b := make([]byte, 4)
@@ -171,9 +175,9 @@ func TestFPP(t *testing.T) {
 }
 
 func TestUnion(t *testing.T) {
-	f1, _ := NewFilterWithEstimates(20, 0.01)
+	f1, _ := NewXXH3FilterWithEstimates(20, 0.01)
 	f1.Add([]byte{1})
-	f2, _ := NewFilterWithEstimates(20, 0.01)
+	f2, _ := NewXXH3FilterWithEstimates(20, 0.01)
 	f2.Add([]byte{2})
 	f1.Union(f2)
 	if !f1.Test([]byte{1}) {
@@ -185,7 +189,7 @@ func TestUnion(t *testing.T) {
 }
 
 func TestCopy(t *testing.T) {
-	f1, _ := NewFilterWithEstimates(20, 0.01)
+	f1, _ := NewXXH3FilterWithEstimates(20, 0.01)
 	f1.Add([]byte{1})
 	if !f1.Test([]byte{1}) {
 		t.Errorf("should contain []byte{1}")
@@ -209,10 +213,10 @@ func TestCopy(t *testing.T) {
 }
 
 func TestIntersect(t *testing.T) {
-	f1, _ := NewFilterWithEstimates(20, 0.01)
+	f1, _ := NewXXH3FilterWithEstimates(20, 0.01)
 	f1.Add([]byte{1})
 	f1.Add([]byte{2})
-	f2, _ := NewFilterWithEstimates(20, 0.01)
+	f2, _ := NewXXH3FilterWithEstimates(20, 0.01)
 	f2.Add([]byte{2})
 	f2.Add([]byte{3})
 	f1.Intersect(f2)
@@ -230,13 +234,13 @@ func TestIntersect(t *testing.T) {
 func BenchmarkEstimateFPP(b *testing.B) {
 	for i := uint64(1); i < uint64(b.N); i++ {
 		n := 1 / i
-		NewFilterWithEstimates(n, EstimateFPP(n))
+		NewXXH3FilterWithEstimates(n, EstimateFPP(n))
 	}
 }
 
 func TestLargeNotPowerOfTwo(t *testing.T) {
 	// Not a power of 2
-	f, _ := NewFilter(9, 10)
+	f, _ := NewXXH3Filter(9, 10)
 	for i := 0; i < 8; i++ {
 		item := make([]byte, 4)
 		rand.Read(item)
