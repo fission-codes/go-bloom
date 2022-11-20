@@ -2,39 +2,39 @@ package bloom
 
 import (
 	"math"
-
-	"github.com/zeebo/xxh3"
 )
 
+type HashFunction[T any] func(T, uint64) uint64
+
 // Hasher generates hashCount hashes as bit indices for the Bloom filter.
-type Hasher struct {
+type Hasher[T any, H HashFunction[T]] struct {
 	bitCount  uint64 // number of bits we need to index into
 	hashCount uint64 // number of hash function calls that result in a bit being set
-	data      []byte // the data sent through the hash function
 	seed      uint64 // seed passed into the hash function, which starts at 0
 	count     uint64 // number of hash function calls so far
 	bitmask   uint64 // used for bitwise-AND to generate an index from the hash
+	function  H      // actual hash function used to generate
 }
 
 // NewHasher returns a new Hasher
-func NewHasher(bitCount, hashCount uint64, data []byte) *Hasher {
-	return &Hasher{
+func NewHasher[T any, H HashFunction[T]](bitCount, hashCount uint64, function H) *Hasher[T, H] {
+	return &Hasher[T, H]{
 		bitCount:  bitCount,
 		hashCount: hashCount,
-		data:      data,
 		seed:      0,
 		count:     0,
 		bitmask:   bitmask(bitCount),
+		function:  function,
 	}
 }
 
 // Next returns true if the Hasher has more hashes to generate.
-func (h *Hasher) Next() bool {
+func (h *Hasher[T, H]) Next() bool {
 	return h.count < h.hashCount
 }
 
 // Value returns the next hash from the Hasher.
-func (h *Hasher) Value() uint64 {
+func (h *Hasher[T, H]) Value(data T) uint64 {
 	shiftSize := uint64(math.Log2(float64(h.bitmask)))
 	var hash, index uint64
 
@@ -44,7 +44,8 @@ func (h *Hasher) Value() uint64 {
 	// generate a new hash and try again.
 	for {
 		// Generate hash with current seed
-		hash = xxh3.HashSeed(h.data, h.seed)
+		//hash = xxh3.HashSeed(h.data, h.seed)
+		hash = h.function(data, h.seed)
 		h.seed += 1
 
 		for i := uint64(0); i < 64; i += shiftSize {
