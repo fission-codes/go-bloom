@@ -179,12 +179,53 @@ func TestUnion(t *testing.T) {
 	f1.Add([]byte{1})
 	f2, _ := NewXXH3FilterWithEstimates(20, 0.01)
 	f2.Add([]byte{2})
-	f1.Union(f2)
+	err := f1.Union(f2)
+	if err != nil {
+		t.Errorf("should not return an error")
+	}
 	if !f1.Test([]byte{1}) {
 		t.Errorf("should contain []byte{1}")
 	}
 	if !f1.Test([]byte{2}) {
 		t.Errorf("should contain []byte{2}")
+	}
+}
+
+func TestIncompatibleBitCountUnion(t *testing.T) {
+	f1, _ := NewXXH3Filter(128, 3)
+	f1.Add([]byte{1})
+	f2, _ := NewXXH3Filter(64, 3)
+	f2.Add([]byte{2})
+	err := f1.Union(f2)
+	if err != ERR_INCOMPATIBLE_BIT_COUNT {
+		t.Errorf("should return ERR_INCOMPATIBLE_BIT_COUNT")
+	}
+}
+
+func TestIncompatibleHashCountUnion(t *testing.T) {
+	f1, _ := NewXXH3Filter(128, 3)
+	f1.Add([]byte{1})
+	f2, _ := NewXXH3Filter(128, 2)
+	f2.Add([]byte{2})
+	err := f1.Union(f2)
+	if err != ERR_INCOMPATIBLE_HASH_COUNT {
+		t.Errorf("should return ERR_INCOMPATIBLE_HASH_COUNT")
+	}
+}
+
+func modified_xxh3(value []byte, seed uint64) uint64 {
+	return xxh3.HashSeed(value, seed+1)
+}
+
+func TestIncompatibleHashFunctiontUnion(t *testing.T) {
+
+	f1, _ := NewFilter(128, 3, XXH3)
+	f1.Add([]byte{1})
+	f2, _ := NewFilter(128, 3, HashFunction[[]byte](modified_xxh3))
+	f2.Add([]byte{2})
+	err := f1.Union(f2)
+	if err != ERR_INCOMPATIBLE_HASH_FUNCTIONS {
+		t.Errorf("should return ERR_INCOMPATIBLE_HASH_FUNCTIONS")
 	}
 }
 
@@ -219,7 +260,10 @@ func TestIntersect(t *testing.T) {
 	f2, _ := NewXXH3FilterWithEstimates(20, 0.01)
 	f2.Add([]byte{2})
 	f2.Add([]byte{3})
-	f1.Intersect(f2)
+	err := f1.Intersect(f2)
+	if err != nil {
+		t.Errorf("should not return an error")
+	}
 	if f1.Test([]byte{1}) {
 		t.Errorf("should not contain []byte{1}")
 	}
@@ -228,6 +272,40 @@ func TestIntersect(t *testing.T) {
 	}
 	if f1.Test([]byte{3}) {
 		t.Errorf("should not contain []byte{3}")
+	}
+}
+
+func TestIncompatibleBitCountIntersect(t *testing.T) {
+	f1, _ := NewXXH3Filter(128, 3)
+	f1.Add([]byte{1})
+	f2, _ := NewXXH3Filter(64, 3)
+	f2.Add([]byte{2})
+	err := f1.Intersect(f2)
+	if err != ERR_INCOMPATIBLE_BIT_COUNT {
+		t.Errorf("should return ERR_INCOMPATIBLE_BIT_COUNT")
+	}
+}
+
+func TestIncompatibleHashCountIntersect(t *testing.T) {
+	f1, _ := NewXXH3Filter(128, 3)
+	f1.Add([]byte{1})
+	f2, _ := NewXXH3Filter(128, 2)
+	f2.Add([]byte{2})
+	err := f1.Intersect(f2)
+	if err != ERR_INCOMPATIBLE_HASH_COUNT {
+		t.Errorf("should return ERR_INCOMPATIBLE_HASH_COUNT")
+	}
+}
+
+func TestIncompatibleHashFunctiontIntersect(t *testing.T) {
+
+	f1, _ := NewFilter(128, 3, XXH3)
+	f1.Add([]byte{1})
+	f2, _ := NewFilter(128, 3, HashFunction[[]byte](modified_xxh3))
+	f2.Add([]byte{2})
+	err := f1.Intersect(f2)
+	if err != ERR_INCOMPATIBLE_HASH_FUNCTIONS {
+		t.Errorf("should return ERR_INCOMPATIBLE_HASH_FUNCTIONS")
 	}
 }
 
