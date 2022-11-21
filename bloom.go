@@ -1,11 +1,17 @@
 package bloom
 
 import (
+	"errors"
 	"math"
+	"reflect"
 
 	"github.com/fission-codes/go-bitset"
 	"github.com/zeebo/xxh3"
 )
+
+var ERR_INCOMPATIBLE_HASH_FUNCTIONS = errors.New("Incompatible Hash Functions")
+var ERR_INCOMPATIBLE_HASH_COUNT = errors.New("Incompatible Hash Count")
+var ERR_INCOMPATIBLE_BIT_COUNT = errors.New("Incompatible Bit Count")
 
 type Filter[T any, H HashFunction[T]] struct {
 	bitCount  uint64         // filter size in bits
@@ -92,6 +98,10 @@ func (f *Filter[T, H]) Bytes() []byte {
 	return f.bitSet.Bytes()
 }
 
+func (f *Filter[T, H]) HashFunction() H {
+	return f.function
+}
+
 // Add sets hashCount bits of the Bloom filter, using the XXH3 hash with a seed.
 // The seed starts at 1 and is incremented by 1 until hashCount bits have been set.
 // Any hash that is higher than the bit count is thrown away and the seed is incremented by 1 and we try again.
@@ -121,14 +131,35 @@ func (f *Filter[T, H]) Test(data T) bool {
 	return true
 }
 
+func (f *Filter[T, H]) checkCompatibility(other *Filter[T, H]) error {
+	if reflect.ValueOf(f.function).Pointer() != reflect.ValueOf(other.function).Pointer() {
+		return ERR_INCOMPATIBLE_HASH_FUNCTIONS
+	}
+	if f.hashCount != other.hashCount {
+		return ERR_INCOMPATIBLE_HASH_COUNT
+	}
+	if f.bitCount != other.bitCount {
+		return ERR_INCOMPATIBLE_BIT_COUNT
+	}
+	return nil
+}
+
 // Union sets this filter's bitset to the union of the other filter's bitset.
-func (f *Filter[T, H]) Union(other *Filter[T, H]) {
-	f.bitSet.Union(other.bitSet)
+func (f *Filter[T, H]) Union(other *Filter[T, H]) error {
+	error := f.checkCompatibility(other)
+	if error == nil {
+		error = f.bitSet.Union(other.bitSet)
+	}
+	return error
 }
 
 // Intersect sets this filter's bitset to the intersection of the other filter's bitset.
-func (f *Filter[T, H]) Intersect(other *Filter[T, H]) {
-	f.bitSet.Intersect(other.bitSet)
+func (f *Filter[T, H]) Intersect(other *Filter[T, H]) error {
+	error := f.checkCompatibility(other)
+	if error == nil {
+		error = f.bitSet.Intersect(other.bitSet)
+	}
+	return error
 }
 
 // FPP returns the false positive probability rate given the number of elements in the filter.
