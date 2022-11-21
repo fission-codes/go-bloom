@@ -98,6 +98,10 @@ func (f *Filter[T, H]) Bytes() []byte {
 	return f.bitSet.Bytes()
 }
 
+func (f *Filter[T, H]) HashFunction() H {
+	return f.function
+}
+
 // Add sets hashCount bits of the Bloom filter, using the XXH3 hash with a seed.
 // The seed starts at 1 and is incremented by 1 until hashCount bits have been set.
 // Any hash that is higher than the bit count is thrown away and the seed is incremented by 1 and we try again.
