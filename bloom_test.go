@@ -370,3 +370,16 @@ func TestEstimatedEntries(t *testing.T) {
 		}
 	}
 }
+
+func TestEstimatedCapacity(t *testing.T) {
+	for i := 0; i < 200; i++ {
+		capacity := mrand.Intn(1024) * 100
+		f, _ := NewXXH3FilterWithEstimates(uint64(capacity), EstimateFPP(uint64(capacity)))
+		estimate := float64(f.EstimateCapacity())
+		fcapacity := float64(capacity)
+		pct := math.Abs(100 * (estimate - fcapacity) / fcapacity)
+		if pct > 20 {
+			t.Errorf("Estimated count is off. Estimate: %f, actual: %v", estimate, capacity)
+		}
+	}
+}
