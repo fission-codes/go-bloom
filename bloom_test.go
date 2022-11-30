@@ -192,6 +192,29 @@ func TestUnion(t *testing.T) {
 	}
 }
 
+func rangePopulate(filter *Filter[[]byte], from uint32, to uint32) {
+	for i := from; i < to; i++ {
+		b := make([]byte, 4)
+		binary.BigEndian.PutUint32(b, i)
+		filter.Add(b)
+	}
+}
+
+func TestUnionWithOverlap(t *testing.T) {
+	f1, _ := NewXXH3FilterWithEstimates(20, 0.01)
+	rangePopulate(f1, 1, 10)
+	f2, _ := NewXXH3FilterWithEstimates(20, 0.01)
+	rangePopulate(f1, 5, 15)
+	err := f1.Union(f2)
+	if err != nil {
+		t.Errorf("should not return an error")
+	}
+	estimate := f1.EstimateEntries()
+	if estimate < 12 || estimate > 17 {
+		t.Errorf("entry count estimation out of range: %v", estimate)
+	}
+}
+
 func TestIncompatibleBitCountUnion(t *testing.T) {
 	f1, _ := NewXXH3Filter(128, 3)
 	f1.Add([]byte{1})
