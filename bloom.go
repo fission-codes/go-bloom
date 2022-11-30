@@ -98,6 +98,10 @@ func (f *Filter[T]) EstimateEntries() uint64 {
 	return uint64(-bitCount*math.Log(1.0-float64(f.bitSet.OnesCount())/bitCount)) / f.hashCount
 }
 
+func (f *Filter[T]) EstimateCapacity() uint64 {
+	return uint64(float32(f.bitCount) * math.Ln2 / float32(f.hashCount))
+}
+
 // Bytes returns the Bloom binary as a byte slice.
 func (f *Filter[T]) Bytes() []byte {
 	return f.bitSet.Bytes()
