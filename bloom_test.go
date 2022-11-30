@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"math"
+	mrand "math/rand"
 	"testing"
 
 	"github.com/zeebo/xxh3"
@@ -325,6 +326,24 @@ func TestLargeNotPowerOfTwo(t *testing.T) {
 		f.Add(item)
 		if f.Test(item) != true {
 			t.Errorf("should always return true for something added, i=%v, item=%v", i, item)
+		}
+	}
+}
+
+func TestEstimatedEntries(t *testing.T) {
+	for i := 0; i < 20; i++ {
+		f, _ := NewXXH3Filter(1024, 4)
+		count := mrand.Intn(1024)
+		for j := 0; j < count; j++ {
+			item := make([]byte, 32)
+			rand.Read(item)
+			f.Add(item)
+		}
+		estimate := float64(f.EstimateEntries())
+		fcount := float64(count)
+		pct := math.Abs(100 * (estimate - fcount) / fcount)
+		if pct > 20 {
+			t.Errorf("Estimated count is off. Estimate: %f, actual: %v", estimate, count)
 		}
 	}
 }
